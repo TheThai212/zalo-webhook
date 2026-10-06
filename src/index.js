@@ -12,6 +12,15 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+/** Khóa chống trùng: id thật dùng id; test SePay (id=0) dùng referenceCode. */
+function getDedupKey(data) {
+  const id = data?.id;
+  if (id === 0 || id === '0' || data?.code === 'SEPAYTEST') {
+    return `test:${data.referenceCode || data.content || Date.now()}`;
+  }
+  return String(id);
+}
+
 /**
  * Parse body linh hoạt: JSON hoặc x-www-form-urlencoded.
  * Dùng raw để tránh express.json() trả HTML 400 khi SePay gửi lệch Content-Type.
@@ -79,21 +88,28 @@ app.post(
 
       data.id = id;
 
-      if (await hasProcessed(data.id)) {
+      // "Gửi thử" của SePay luôn dùng id=0 → dedup theo referenceCode để mỗi lần test vẫn gửi Zalo
+      const dedupKey = getDedupKey(data);
+      console.log('[webhook] dedupKey=', dedupKey);
+
+      if (await hasProcessed(dedupKey)) {
+        console.log('[webhook] skip duplicate, no Zalo send');
         return res.json({ success: true });
       }
 
       if (data.transferType === 'in') {
         const text = formatIncomingMessage(data);
         try {
+          console.log('[webhook] sending Zalo...');
           await sendZaloMessage(text);
+          console.log('[webhook] Zalo ok');
         } catch (err) {
           console.error('[zalo]', err.message);
           return res.status(500).json({ success: false, message: 'Zalo send failed' });
         }
       }
 
-      await markProcessed(data.id);
+      await markProcessed(dedupKey);
       return res.json({ success: true });
     } catch (err) {
       console.error('[webhook]', err);

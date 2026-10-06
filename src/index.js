@@ -4,12 +4,28 @@ import { verifySepayApiKey } from './sepayAuth.js';
 import { hasProcessed, markProcessed } from './dedup.js';
 import { formatIncomingMessage, formatOutgoingMessage } from './formatMessage.js';
 import { sendZaloMessage } from './zalo.js';
+import { startWeatherJob, runWeatherNotify } from './weatherJob.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+/** Gửi thử thời tiết — tách biệt hoàn toàn khỏi SePay. */
+app.post('/weather/test', async (_req, res) => {
+  try {
+    const result = await runWeatherNotify();
+    return res.json({
+      success: true,
+      isRain: result.data.isRain,
+      stickerId: result.stickerId,
+    });
+  } catch (err) {
+    console.error('[weather] test failed:', err.message);
+    return res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 /** Khóa chống trùng: id thật dùng id; test SePay (id=0) dùng referenceCode. */
@@ -123,4 +139,9 @@ app.post(
 
 app.listen(PORT, () => {
   console.log(`Listening on :${PORT}`);
+  try {
+    startWeatherJob();
+  } catch (err) {
+    console.error('[weather] start failed:', err.message);
+  }
 });

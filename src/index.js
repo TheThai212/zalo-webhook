@@ -3,8 +3,9 @@ import express from 'express';
 import { verifySepayApiKey } from './sepayAuth.js';
 import { hasProcessed, markProcessed } from './dedup.js';
 import { formatIncomingMessage, formatOutgoingMessage } from './formatMessage.js';
-import { sendZaloMessage } from './zalo.js';
+import { sendZaloMessage, sendZaloSticker } from './zalo.js';
 import { startWeatherJob, runWeatherNotify } from './weatherJob.js';
+import { pickTransferSticker } from './transferMedia.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -122,6 +123,15 @@ app.post(
           console.log('[webhook] sending Zalo...', data.transferType);
           await sendZaloMessage(text);
           console.log('[webhook] Zalo ok');
+          try {
+            const stickerId = pickTransferSticker(data.transferType);
+            if (stickerId) {
+              console.log('[webhook] transfer sticker=', stickerId);
+              await sendZaloSticker(stickerId);
+            }
+          } catch (stickerErr) {
+            console.error('[zalo] transfer sticker failed:', stickerErr.message);
+          }
         } catch (err) {
           console.error('[zalo]', err.message);
           return res.status(500).json({ success: false, message: 'Zalo send failed' });

@@ -8,10 +8,14 @@ export function verifySepayApiKey(req) {
   }
 
   const header = req.headers.authorization ?? '';
-  const match = header.match(/^Apikey\s+(.+)$/i);
-  const provided = match?.[1]?.trim() ?? '';
+  const match = header.match(/^(?:Apikey|Bearer)\s+(.+)$/i);
+  const provided =
+    match?.[1]?.trim() ||
+    String(req.headers['x-api-key'] ?? '').trim() ||
+    '';
 
   if (!provided || provided !== expected) {
+    console.error('[auth] fail header=', header ? '(present)' : '(missing)');
     return { ok: false, status: 401, message: 'Unauthorized' };
   }
 

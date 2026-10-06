@@ -3,12 +3,9 @@ function formatAmount(amount) {
   return `${n.toLocaleString('vi-VN')}₫`;
 }
 
-/**
- * Tạo nội dung tin nhắn markdown cho giao dịch tiền vào.
- */
-export function formatIncomingMessage(data) {
+function formatTransactionMessage(title, data) {
   const lines = [
-    '💰 *Tiền vào*',
+    title,
     `Ngân hàng: ${data.gateway ?? '—'}`,
     `Số tiền: ${formatAmount(data.transferAmount)}`,
     `Thời gian: ${data.transactionDate ?? '—'}`,
@@ -28,4 +25,18 @@ export function formatIncomingMessage(data) {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Tạo nội dung tin nhắn markdown cho giao dịch tiền vào.
+ */
+export function formatIncomingMessage(data) {
+  return formatTransactionMessage('💰 *Tiền vào*', data);
+}
+
+/**
+ * Tạo nội dung tin nhắn markdown cho giao dịch tiền ra.
+ */
+export function formatOutgoingMessage(data) {
+  return formatTransactionMessage('💸 *Tiền ra*', data);
 }

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { verifySepayApiKey } from './sepayAuth.js';
 import { hasProcessed, markProcessed } from './dedup.js';
-import { formatIncomingMessage } from './formatMessage.js';
+import { formatIncomingMessage, formatOutgoingMessage } from './formatMessage.js';
 import { sendZaloMessage } from './zalo.js';
 
 const app = express();
@@ -97,10 +97,13 @@ app.post(
         return res.json({ success: true });
       }
 
-      if (data.transferType === 'in') {
-        const text = formatIncomingMessage(data);
+      if (data.transferType === 'in' || data.transferType === 'out') {
+        const text =
+          data.transferType === 'out'
+            ? formatOutgoingMessage(data)
+            : formatIncomingMessage(data);
         try {
-          console.log('[webhook] sending Zalo...');
+          console.log('[webhook] sending Zalo...', data.transferType);
           await sendZaloMessage(text);
           console.log('[webhook] Zalo ok');
         } catch (err) {
